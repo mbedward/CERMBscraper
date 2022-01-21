@@ -1,0 +1,23 @@
+Package: CERMBscraper
+Type: Package
+Title: Scrape selected parts from fire-related documents
+Version: 0.1.0
+Authors@R: c(
+  person("Michael", "Bedward", role = c("aut", "cre"), email = "michael.bedward@gmail.com"),
+  person("Owen", "Price", role = "aut")
+  )
+Description: Provides functions to extract selected content from fire-related
+    documents such as Incident Action Plans (PDF format) produced by the NSW 
+    Rural Fire Service.
+Depends: R (>= 4.0.0)
+Imports: dplyr,
+  magick,
+  pdftools,
+  sf,
+  stringr,
+  tesseract,
+  yaml
+Encoding: UTF-8
+LazyData: true
+License: MIT + file LICENSE
+RoxygenNote: 7.1.2
