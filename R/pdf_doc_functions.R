@@ -8,7 +8,8 @@
 #'   'mission', 'execution', 'command', 'safety'. Section names may be
 #'   abbreviated and case is ignored.
 #'
-#' @return A data frame with columns: section, start_pos, end_pos, text.
+#' @return A data frame with columns: section, start_pos, end_pos, text;
+#'   or \code{NULL} if the document does not contain any recognized sections.
 #'
 #' @export
 #'
@@ -40,8 +41,14 @@ read_iap_sections <- function(iap_path, sections = NULL) {
   iap_text <- gsub("[^\\x00-\\x7F]+", "", iap_text, perl = TRUE)
 
   # Partition text into recognizable sections and return the requested ones
-  dat <- .do_split_sections(iap_text) %>%
-    dplyr::filter(section %in% sections)
+  dat <- .do_split_sections(iap_text)
+
+  if (is.null(dat)) {
+    # No recognized sections were found
+    NULL
+  } else {
+    dplyr::filter(dat, section %in% sections)
+  }
 }
 
 
@@ -59,6 +66,12 @@ read_iap_sections <- function(iap_path, sections = NULL) {
     ptn <- paste0("^\\s*", ptn)
     which( stringr::str_detect(iap_text, ptn) )
   })
+
+  # Check for no sections
+  if (all(lengths(iheader) == 0)) {
+    warning("No recognized sections in document")
+    return(NULL)
+  }
 
   # Transform the iheader list into a sorted look-up table, allowing for
   # any repeated sections

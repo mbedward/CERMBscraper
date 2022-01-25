@@ -16,7 +16,8 @@ one or more names of sections to return. Options are: 'situation',
 abbreviated and case is ignored.}
 }
 \value{
-A data frame with columns: section, start_pos, end_pos, text.
+A data frame with columns: section, start_pos, end_pos, text;
+  or \code{NULL} if the document does not contain any recognized sections.
 }
 \description{
 Parse the text of an Incident Action Plan document into sections
