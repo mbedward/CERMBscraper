@@ -17,7 +17,7 @@ bushfire data.
 
 # install.packages("remotes")
 
-remotes::install_github("mbedward/CERMBscaper")
+remotes::install_github("mbedward/CERMBscraper")
 
 ```
 
