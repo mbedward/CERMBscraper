@@ -4,7 +4,7 @@
 \alias{read_iap_sections}
 \title{Parse the text of an Incident Action Plan document into sections}
 \usage{
-read_iap_sections(iap_path, sections = NULL)
+read_iap_sections(iap_path, sections = NULL, dpi = 300)
 }
 \arguments{
 \item{iap_path}{(character) Path and name of the IAP file. This must be a
@@ -14,6 +14,9 @@ PDF-format document.}
 one or more names of sections to return. Options are: 'situation',
 'mission', 'execution', 'command', 'safety'. Section names may be
 abbreviated and case is ignored.}
+
+\item{dpi}{(integer) Resolution to use when processing scanned image
+documents (default 300).}
 }
 \value{
 A data frame with columns: section, start_pos, end_pos, text;

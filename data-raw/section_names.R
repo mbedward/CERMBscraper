@@ -3,6 +3,7 @@
 IAP_SECTION_NAMES <- c('situation' = "SITUATION",
                        'mission' = "MISSION",
                        'execution' = "EXECUTION",
+                       'administration' = "ADMINISTRATION",
                        'command' = "COMMAND AND COMMUNICATIONS",
                        'safety' = "SAFETY [Aa][Nn][Dd] HAZARDS")
 

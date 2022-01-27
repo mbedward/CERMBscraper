@@ -8,12 +8,16 @@
 #'   'mission', 'execution', 'command', 'safety'. Section names may be
 #'   abbreviated and case is ignored.
 #'
+#' @param dpi (integer) Resolution to use when processing scanned image
+#'   documents (default 300).
+#'
 #' @return A data frame with columns: section, start_pos, end_pos, text;
 #'   or \code{NULL} if the document does not contain any recognized sections.
 #'
 #' @export
 #'
-read_iap_sections <- function(iap_path, sections = NULL) {
+read_iap_sections <- function(iap_path, sections = NULL, dpi = 300) {
+  browser()
   if (is.null(sections)) {
     sections <- names(CERMBscraper::IAP_SECTION_NAMES)
   } else {
@@ -22,23 +26,13 @@ read_iap_sections <- function(iap_path, sections = NULL) {
                           several.ok = TRUE)
   }
 
-  if (!file.exists(iap_path)) stop("Can't find the file ", log_path)
+  if (!file.exists(iap_path)) stop("Can't find the file ", iap_path)
 
-  # First, try to recover text from the document assuming that it is a
-  # standard PDF with text. Use the `tabulizer` package rather than
-  # `pdftools` because it can cope with double page formatting that is
-  # used in some documents.
-  #
-  iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
-
-  # If we didn't get any text, the document is probably a scanned image rather
-  # than a standard PDF.
-  if (!any(stringr::str_length(iap_text) > 0)) {
+  if (.is_scanned_image(iap_path)) {
     iap_text <- .do_extract_text_from_image(iap_path)
+  } else {
+    iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
   }
-
-  # Remove extraneous unicode characters (bullet symbols etc)
-  iap_text <- gsub("[^\\x00-\\x7F]+", "", iap_text, perl = TRUE)
 
   # Partition text into recognizable sections and return the requested ones
   dat <- .do_split_sections(iap_text)
@@ -57,8 +51,13 @@ read_iap_sections <- function(iap_path, sections = NULL) {
 # Returns a data frame with columns: section, start_pos, end_pos, text.
 #
 .do_split_sections <- function(iap_text) {
-  # Combine text from the one or more images and split into lines
+  # Combine text from the one or more pages
   iap_text <- paste(iap_text, collapse = "\n")
+
+  # Remove extraneous unicode characters (bullet symbols etc)
+  iap_text <- gsub("[^\\x00-\\x7F]+", "", iap_text, perl = TRUE)
+
+  # Split text into lines
   iap_text <- stringr::str_split(iap_text, "[\\n\\r]+")[[1]]
 
   # Locate section headers
@@ -69,7 +68,7 @@ read_iap_sections <- function(iap_path, sections = NULL) {
 
   # Check for no sections
   if (all(lengths(iheader) == 0)) {
-    warning("No recognized sections in document")
+    warning("No recognized sections in document", immediate. = TRUE)
     return(NULL)
   }
 
@@ -105,33 +104,47 @@ read_iap_sections <- function(iap_path, sections = NULL) {
 }
 
 
+# Helper function to determine if a PDF file is a scanned image rather
+# than standard text.
+#
+.is_scanned_image <- function(iap_path) {
+  txt <- pdftools::pdf_text(iap_path)
+
+  # Return TRUE if no alphanumeric characters were retrieved
+  !any(stringr::str_detect(txt, "[:alnum:]"))
+}
+
+
 # Helper function to retrieve text from an IAP document that contains a scanned
 # image rather than text.
 #
-.do_extract_text_from_image <- function(iap_path) {
+.do_extract_text_from_image <- function(iap_path, dpi = 300) {
+  browser()
   num_pages <- pdftools::pdf_info(iap_path)$pages
 
   image_paths <- tempfile("iap_scan", fileext = rep(".png", num_pages))
 
+  # Convert to high-res image
   pdftools::pdf_convert(iap_path,
                         format = "png",
                         pages = 1:num_pages,
-                        filenames = img_paths,
-                        dpi = 600)
+                        filenames = image_paths,
+                        dpi = dpi)
 
   # Scrape text from each image
   ocr_txt <- lapply(1:num_pages, function(ipage) {
-    img <- magick::image_read(img_paths[ipage])
-
+    img <- magick::image_read(image_paths[ipage])
     info <- magick::image_info(img)
 
     # If the image is wider than tall, assume it needs rotating
     if (info$width > info$height) {
       img <- magick::image_rotate(img, degrees = 90)
-      magick::image_write(img, path = img_paths[ipage], format = "png")
     }
 
-    tesseract::ocr(img)
+    # Convert image to grey scale and do OCR
+    img %>%
+      magick::image_convert(type = "Grayscale") %>%
+      tesseract::ocr()
   })
 
   ocr_txt

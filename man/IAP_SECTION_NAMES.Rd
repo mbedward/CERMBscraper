@@ -5,7 +5,7 @@
 \alias{IAP_SECTION_NAMES}
 \title{Standard section names for Incident Action Plans}
 \format{
-An object of class \code{character} of length 5.
+An object of class \code{character} of length 6.
 }
 \usage{
 IAP_SECTION_NAMES
