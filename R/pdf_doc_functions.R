@@ -8,6 +8,11 @@
 #'   'mission', 'execution', 'command', 'safety'. Section names may be
 #'   abbreviated and case is ignored.
 #'
+#' @param scanned_images (logical) Set to \code{FALSE} (default) to skip
+#'   documents containing scanned images; or \code{TRUE} to attempt to retrieve
+#'   text using OCR. Scanned image processing often fails, and relies on each
+#'   page of the document corresponding to a single page of the hard copy.
+#'
 #' @param dpi (integer) Resolution to use when processing scanned image
 #'   documents (default 300).
 #'
@@ -16,7 +21,10 @@
 #'
 #' @export
 #'
-read_iap_sections <- function(iap_path, sections = NULL, dpi = 300) {
+read_iap_sections <- function(iap_path,
+                              sections = NULL,
+                              scanned_images = FALSE,
+                              dpi = 300) {
   if (is.null(sections)) {
     sections <- names(CERMBscraper::IAP_SECTION_NAMES)
   } else {
@@ -28,7 +36,12 @@ read_iap_sections <- function(iap_path, sections = NULL, dpi = 300) {
   if (!file.exists(iap_path)) stop("Can't find the file ", iap_path)
 
   if (.is_scanned_image(iap_path)) {
-    iap_text <- .do_extract_text_from_image(iap_path)
+    if (!scanned_images) {
+      message("...skipping scanned image document")
+      return(NULL)
+    } else {
+      iap_text <- .do_extract_text_from_image(iap_path)
+    }
   } else {
     iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
   }
@@ -52,9 +65,6 @@ read_iap_sections <- function(iap_path, sections = NULL, dpi = 300) {
 .do_split_sections <- function(iap_text) {
   # Combine text from the one or more pages
   iap_text <- paste(iap_text, collapse = "\n")
-
-  # Remove extraneous unicode characters (bullet symbols etc)
-  iap_text <- gsub("[^\\x00-\\x7F]+", "", iap_text, perl = TRUE)
 
   # Split text into lines
   iap_text <- stringr::str_split(iap_text, "[\\n\\r]+")[[1]]
