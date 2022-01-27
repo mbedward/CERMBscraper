@@ -17,7 +17,6 @@
 #' @export
 #'
 read_iap_sections <- function(iap_path, sections = NULL, dpi = 300) {
-  browser()
   if (is.null(sections)) {
     sections <- names(CERMBscraper::IAP_SECTION_NAMES)
   } else {
@@ -119,7 +118,6 @@ read_iap_sections <- function(iap_path, sections = NULL, dpi = 300) {
 # image rather than text.
 #
 .do_extract_text_from_image <- function(iap_path, dpi = 300) {
-  browser()
   num_pages <- pdftools::pdf_info(iap_path)$pages
 
   image_paths <- tempfile("iap_scan", fileext = rep(".png", num_pages))
