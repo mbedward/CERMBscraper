@@ -35,15 +35,15 @@ read_iap_sections <- function(iap_path,
 
   if (!file.exists(iap_path)) stop("Can't find the file ", iap_path)
 
-  if (.is_scanned_image(iap_path)) {
-    if (!scanned_images) {
+  if (is_text_doc(iap_path)) {
+    iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
+  } else {
+    if (scanned_images) {
+      iap_text <- .do_extract_text_from_image(iap_path)
+    } else {
       message("...skipping scanned image document")
       return(NULL)
-    } else {
-      iap_text <- .do_extract_text_from_image(iap_path)
     }
-  } else {
-    iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
   }
 
   # Partition text into recognizable sections and return the requested ones
@@ -113,14 +113,25 @@ read_iap_sections <- function(iap_path,
 }
 
 
-# Helper function to determine if a PDF file is a scanned image rather
-# than standard text.
-#
-.is_scanned_image <- function(iap_path) {
-  txt <- pdftools::pdf_text(iap_path)
+#' Detect whether a document contains text elements
+#'
+#' This function can be used to classify documents into those with standard PDF
+#' text elements versus those with no such elements (typically documents
+#' containing scanned images).
+#'
+#' @param doc_path (character) Path and name of the input file. This must be a
+#'   PDF-format document.
+#'
+#' @return \code{TRUE} is the document is made up of scanned images rather than
+#'   standard text elements; \code{FALSE} otherwise.
+#'
+#' @export
+#'
+is_text_doc <- function(doc_path) {
+  txt <- pdftools::pdf_text(doc_path)
 
-  # Return TRUE if no alphanumeric characters were retrieved
-  !any(stringr::str_detect(txt, "[:alnum:]"))
+  # Return TRUE if any alphanumeric characters were retrieved
+  any(stringr::str_detect(txt, "[:alnum:]"))
 }
 
 
