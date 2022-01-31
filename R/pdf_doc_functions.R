@@ -8,7 +8,12 @@
 #'   'mission', 'execution', 'command', 'safety'. Section names may be
 #'   abbreviated and case is ignored.
 #'
-#' @param scanned_images (logical) Set to \code{FALSE} (default) to skip
+#' @param doctype (character) Type of documents to process. Options are:
+#'   \code{'simple'} (default) to only read standard documents with PDF text
+#'   elements; \code{'scanned'} to only read documents containing images of
+#'   scanned hard copies; or \code{'all'} to attempt to read all documents.
+#'
+#' Set to \code{FALSE} (default) to skip
 #'   documents containing scanned images; or \code{TRUE} to attempt to retrieve
 #'   text using OCR. Scanned image processing often fails, and relies on each
 #'   page of the document corresponding to a single page of the hard copy.
@@ -23,8 +28,11 @@
 #'
 read_iap_sections <- function(iap_path,
                               sections = NULL,
-                              scanned_images = FALSE,
+                              doctype = c("simple", "scanned", "all"),
                               dpi = 300) {
+
+  doctype <- match.arg(doctype)
+
   if (is.null(sections)) {
     sections <- names(CERMBscraper::IAP_SECTION_NAMES)
   } else {
@@ -35,25 +43,34 @@ read_iap_sections <- function(iap_path,
 
   if (!file.exists(iap_path)) stop("Can't find the file ", iap_path)
 
-  if (is_text_doc(iap_path)) {
-    iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
-  } else {
-    if (scanned_images) {
+  iap_text <- NULL
+  is_text <- is_text_doc(iap_path)
+
+  if (is_text) {
+    if (doctype %in% c("simple", "all")) {
+      iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
+    } else {
+      message("...skipping simple PDF document")
+    }
+  } else {  # scanned image doc
+    if (doctype %in% c("scanned", "all")) {
       iap_text <- .do_extract_text_from_image(iap_path)
     } else {
       message("...skipping scanned image document")
-      return(NULL)
     }
   }
 
-  # Partition text into recognizable sections and return the requested ones
-  dat <- .do_split_sections(iap_text)
-
-  if (is.null(dat)) {
-    # No recognized sections were found
+  if (is.null(iap_text)) {
     NULL
   } else {
-    dplyr::filter(dat, section %in% sections)
+    dat <- .do_split_sections(iap_text)
+
+    if (is.null(dat)) {
+      # No recognized sections were found
+      NULL
+    } else {
+      dplyr::filter(dat, section %in% sections)
+    }
   }
 }
 
