@@ -1,12 +1,16 @@
 #' Parse the text of an Incident Action Plan document into sections
 #'
-#' @param iap_path (character) Path and name of the IAP file. This must be a
-#'   PDF-format document.
+#' This function has been specifically written to deal with IAP documents but
+#' might work with other report formats as well if one or more relevant section
+#' names can be provided via the \code{sections} argument.
 #'
-#' @param sections (character) Either \code{NULL} for all sections (default), or
-#'   one or more names of sections to return. Options are: 'situation',
-#'   'mission', 'execution', 'command', 'safety'. Section names may be
-#'   abbreviated and case is ignored.
+#' @param doc_path (character) Path and name of the IAP document (or a similarly
+#'   structured report). This must be a PDF-format document.
+#'
+#' @param sections (character) Either \code{NULL} for a pre-defined set of IAP
+#'   section headers (default), or one or more names of sections to return. The
+#'   default section names are defined in the character vector
+#'   \code{'CERMBscraper::IAP_SECTION_NAMES'} which is included with the package.
 #'
 #' @param doctype (character) Type of documents to process. Options are:
 #'   \code{'simple'} (default) to only read standard documents with PDF text
@@ -26,7 +30,7 @@
 #'
 #' @export
 #'
-read_iap_sections <- function(iap_path,
+read_iap_sections <- function(doc_path,
                               sections = NULL,
                               doctype = c("simple", "scanned", "all"),
                               dpi = 300) {
@@ -41,29 +45,29 @@ read_iap_sections <- function(iap_path,
                           several.ok = TRUE)
   }
 
-  if (!file.exists(iap_path)) stop("Can't find the file ", iap_path)
+  if (!file.exists(doc_path)) stop("Can't find the file ", doc_path)
 
-  iap_text <- NULL
-  is_text <- is_text_doc(iap_path)
+  doc_text <- NULL
+  is_text <- is_text_doc(doc_path)
 
   if (is_text) {
     if (doctype %in% c("simple", "all")) {
-      iap_text <- suppressWarnings( tabulizer::extract_text(iap_path) )
+      doc_text <- suppressWarnings( tabulapdf::extract_text(doc_path) )
     } else {
       message("...skipping simple PDF document")
     }
   } else {  # scanned image doc
     if (doctype %in% c("scanned", "all")) {
-      iap_text <- .do_extract_text_from_image(iap_path)
+      doc_text <- .do_extract_text_from_image(doc_path)
     } else {
       message("...skipping scanned image document")
     }
   }
 
-  if (is.null(iap_text)) {
+  if (is.null(doc_text)) {
     NULL
   } else {
-    dat <- .do_split_sections(iap_text)
+    dat <- .do_split_sections(doc_text)
 
     if (is.null(dat)) {
       # No recognized sections were found
@@ -75,21 +79,21 @@ read_iap_sections <- function(iap_path,
 }
 
 
-# Helper function to split IAP text into recognizable sections.
+# Helper function to split document text into recognizable sections.
 #
 # Returns a data frame with columns: section, start_pos, end_pos, text.
 #
-.do_split_sections <- function(iap_text) {
+.do_split_sections <- function(doc_text) {
   # Combine text from the one or more pages
-  iap_text <- paste(iap_text, collapse = "\n")
+  doc_text <- paste(doc_text, collapse = "\n")
 
   # Split text into lines
-  iap_text <- stringr::str_split(iap_text, "[\\n\\r]+")[[1]]
+  doc_text <- stringr::str_split(doc_text, "[\\n\\r]+")[[1]]
 
   # Locate section headers
   iheader <- lapply(CERMBscraper::IAP_SECTION_NAMES, function(ptn) {
     ptn <- paste0("^\\s*", ptn)
-    which( stringr::str_detect(iap_text, ptn) )
+    which( stringr::str_detect(doc_text, ptn) )
   })
 
   # Check for no sections
@@ -108,7 +112,7 @@ read_iap_sections <- function(iap_path,
   names(iheader) <- stringr::str_replace(names(iheader), "\\d+$", "")
 
   # 3. Add end marker
-  iheader <- c(iheader, 'END_OF_FILE' = length(iap_text) + 1)
+  iheader <- c(iheader, 'END_OF_FILE' = length(doc_text) + 1)
 
   # 4. Create sorted look-up table
   section_lookup <- data.frame(section = names(iheader), start_pos = iheader) %>%
@@ -122,7 +126,7 @@ read_iap_sections <- function(iap_path,
   dat$text <- NA_character_
 
   for (i in seq_len(nrow(dat))) {
-    dat$text[i] = paste(iap_text[dat$start_pos[i]:dat$end_pos[i]], collapse = " ")
+    dat$text[i] = paste(doc_text[dat$start_pos[i]:dat$end_pos[i]], collapse = " ")
   }
 
   # Return the result
@@ -155,13 +159,13 @@ is_text_doc <- function(doc_path) {
 # Helper function to retrieve text from an IAP document that contains a scanned
 # image rather than text.
 #
-.do_extract_text_from_image <- function(iap_path, dpi = 300) {
-  num_pages <- pdftools::pdf_info(iap_path)$pages
+.do_extract_text_from_image <- function(doc_path, dpi = 300) {
+  num_pages <- pdftools::pdf_info(doc_path)$pages
 
   image_paths <- tempfile("iap_scan", fileext = rep(".png", num_pages))
 
   # Convert to high-res image
-  pdftools::pdf_convert(iap_path,
+  pdftools::pdf_convert(doc_path,
                         format = "png",
                         pages = 1:num_pages,
                         filenames = image_paths,

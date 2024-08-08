@@ -5,20 +5,20 @@
 \title{Parse the text of an Incident Action Plan document into sections}
 \usage{
 read_iap_sections(
-  iap_path,
+  doc_path,
   sections = NULL,
   doctype = c("simple", "scanned", "all"),
   dpi = 300
 )
 }
 \arguments{
-\item{iap_path}{(character) Path and name of the IAP file. This must be a
-PDF-format document.}
+\item{doc_path}{(character) Path and name of the IAP document (or a similarly
+structured report). This must be a PDF-format document.}
 
-\item{sections}{(character) Either \code{NULL} for all sections (default), or
-one or more names of sections to return. Options are: 'situation',
-'mission', 'execution', 'command', 'safety'. Section names may be
-abbreviated and case is ignored.}
+\item{sections}{(character) Either \code{NULL} for a pre-defined set of IAP
+section headers (default), or one or more names of sections to return. The
+default section names are defined in the character vector
+\code{'CERMBscraper::IAP_SECTION_NAMES'} which is included with the package.}
 
 \item{doctype}{(character) Type of documents to process. Options are:
   \code{'simple'} (default) to only read standard documents with PDF text
@@ -38,5 +38,7 @@ A data frame with columns: section, start_pos, end_pos, text;
   or \code{NULL} if the document does not contain any recognized sections.
 }
 \description{
-Parse the text of an Incident Action Plan document into sections
+This function has been specifically written to deal with IAP documents but
+might work with other report formats as well if one or more relevant section
+names can be provided via the \code{sections} argument.
 }
